@@ -8,6 +8,7 @@ namespace Authoring
     public class PlayerAuthoring : MonoBehaviour
     {
         public float speed = 5f;
+        public float turnSpeed = 5f;
 
         private class Baker : Baker<PlayerAuthoring>
         {
@@ -18,7 +19,9 @@ namespace Authoring
                 AddComponent(entity, new WormMovementComponent
                 {
                     Speed = authoring.speed,
-                    Direction = float2.zero
+                    TargetDirection = new float2(1f, 0f),
+                    Direction = new float2(1f, 0f),
+                    TurnSpeed = authoring.turnSpeed
                 });
 
                 AddComponent(entity, new PlayerTagComponent());

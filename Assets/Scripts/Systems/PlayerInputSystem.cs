@@ -1,46 +1,33 @@
 using Components;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 
 namespace Systems
 {
+    [UpdateBefore(typeof(WormMovementSystem))]
     public partial struct PlayerInputSystem : ISystem
     {
-        private float2 _lastMouseWorldPos;
-        private bool _isInitialized;
-
         public void OnUpdate(ref SystemState state)
         {
-            //TODO: authored
             var camera = Camera.main;
-            if (!camera)
-                return;
+            if (!camera) return;
 
-            var mouseScreenPos = Input.mousePosition;
-            var mouseWorldPos =
-                (float2)(Vector2)camera.ScreenToWorldPoint(new Vector3(mouseScreenPos.x, mouseScreenPos.y,
-                    camera.nearClipPlane));
+            var mouseWorldPos = (float2)(Vector2)camera.ScreenToWorldPoint(Input.mousePosition);
 
-            if (!_isInitialized)
+            foreach (var (worm, transform) in SystemAPI.Query<RefRW<WormMovementComponent>, RefRO<LocalTransform>>()
+                         .WithAll<PlayerTagComponent>())
             {
-                _lastMouseWorldPos = mouseWorldPos;
-                _isInitialized = true;
-                return;
-            }
+                var wormPos = new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.y);
+                var vectorToMouse = mouseWorldPos - wormPos;
 
-            float2 mouseDelta = mouseWorldPos - _lastMouseWorldPos;
-            float mouseMoveDistance = math.length(mouseDelta);
-
-            if (mouseMoveDistance > 0.1f)
-            {
-                foreach (var playerMovement in SystemAPI.Query<RefRW<WormMovementComponent>>()
-                             .WithAll<PlayerTagComponent>())
+                if (math.lengthsq(vectorToMouse) > 0.1f)
                 {
-                    playerMovement.ValueRW.Direction = math.normalize(mouseDelta);
+                    worm.ValueRW.TargetDirection = math.normalize(vectorToMouse);
                 }
 
-                _lastMouseWorldPos = mouseWorldPos;
+                break;
             }
         }
     }

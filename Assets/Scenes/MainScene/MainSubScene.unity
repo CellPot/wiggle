@@ -164,7 +164,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efbcab3eb4eb41fc94edba37d1402c2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Authoring.PlayerAuthoring
-  speed: 5
+  speed: 26.51
+  turnSpeed: 10
 --- !u!1 &2037706452
 GameObject:
   m_ObjectHideFlags: 0
@@ -236,7 +237,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 2
-  m_Size: {x: 200, y: 200}
+  m_Size: {x: 1000, y: 1000}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
