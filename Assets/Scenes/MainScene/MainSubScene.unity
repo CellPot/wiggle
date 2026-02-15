@@ -119,6 +119,54 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &354541474
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 354541476}
+  - component: {fileID: 354541475}
+  m_Layer: 0
+  m_Name: FoodSpawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &354541475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 354541474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1aa3289f255c4be292647c294e28cd30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Authoring.FoodSpawnerAuthoring
+  foodPrefab: {fileID: 5487893064513193039, guid: 878e15e2ccfb5b249ac0d9eb21fefdbd, type: 3}
+  maxFoodCount: 50
+  spawnRadius: 100
+  spawnInterval: 1
+--- !u!4 &354541476
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 354541474}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &563687721
 GameObject:
   m_ObjectHideFlags: 0
@@ -129,6 +177,7 @@ GameObject:
   m_Component:
   - component: {fileID: 563687722}
   - component: {fileID: 563687723}
+  - component: {fileID: 563687724}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -164,8 +213,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efbcab3eb4eb41fc94edba37d1402c2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Authoring.PlayerAuthoring
-  speed: 26.51
-  turnSpeed: 10
+--- !u!114 &563687724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 563687721}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9281495c5edf42bbb51aa275597b4d27, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Authoring.WormAuthoring
+  speed: 10
+  turnSpeed: 5
+  collisionRadius: 0.5
 --- !u!1 &2037706452
 GameObject:
   m_ObjectHideFlags: 0
@@ -375,3 +437,4 @@ SceneRoots:
   m_Roots:
   - {fileID: 2037706454}
   - {fileID: 563687722}
+  - {fileID: 354541476}
