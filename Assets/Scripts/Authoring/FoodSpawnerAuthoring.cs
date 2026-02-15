@@ -10,6 +10,7 @@ namespace Authoring
         public int maxFoodCount = 200;
         public float spawnRadius = 500f;
         public float spawnInterval = 2f;
+        public float foodScale = 0.5f;
 
         class Baker : Baker<FoodSpawnerAuthoring>
         {
@@ -22,7 +23,8 @@ namespace Authoring
                     FoodPrefab = GetEntity(authoring.foodPrefab, TransformUsageFlags.Dynamic),
                     MaxFoodCount = authoring.maxFoodCount,
                     SpawnRadius = authoring.spawnRadius,
-                    SpawnInterval = authoring.spawnInterval
+                    SpawnInterval = authoring.spawnInterval,
+                    FoodScale = authoring.foodScale,
                 });
             }
         }

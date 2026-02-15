@@ -26,7 +26,7 @@ namespace Systems
             foreach (var spawnerComponent in SystemAPI.Query<RefRW<FoodSpawnerComponent>>())
             {
                 int foodCount = SystemAPI.QueryBuilder().WithAll<FoodComponent>().Build().CalculateEntityCount();
-                
+
                 int toSpawn = math.min(spawnerComponent.ValueRO.MaxFoodCount - foodCount, 5);
 
                 if (toSpawn > 0 && currentTime >= spawnerComponent.ValueRO.NextSpawnTime)
@@ -36,7 +36,7 @@ namespace Systems
                     {
                         float angle = random.NextFloat(0, math.PI * 2);
                         float distance = random.NextFloat(0, spawnerComponent.ValueRO.SpawnRadius);
-                    
+
                         float3 spawnPos = new float3(
                             math.cos(angle) * distance,
                             math.sin(angle) * distance,
@@ -44,7 +44,11 @@ namespace Systems
                         );
 
                         var foodEntity = state.EntityManager.Instantiate(spawnerComponent.ValueRO.FoodPrefab);
-                        state.EntityManager.SetComponentData(foodEntity, LocalTransform.FromPosition(spawnPos));
+                        state.EntityManager.SetComponentData(foodEntity,
+                            LocalTransform.FromPositionRotationScale(
+                                spawnPos,
+                                quaternion.identity,
+                                spawnerComponent.ValueRO.FoodScale));
                     }
 
                     spawnerComponent.ValueRW.NextSpawnTime = currentTime + spawnerComponent.ValueRO.SpawnInterval;

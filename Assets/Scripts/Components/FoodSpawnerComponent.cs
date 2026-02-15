@@ -11,5 +11,6 @@ namespace Components
 
         public float NextSpawnTime;
         public float SpawnInterval;
+        public float FoodScale;
     }
 }
