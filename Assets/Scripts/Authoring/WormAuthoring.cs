@@ -11,6 +11,9 @@ namespace Authoring
         public float turnSpeed = 10f;
         public float collisionRadius = 0.5f;
 
+        public GameObject segmentPrefab;
+        public float segmentSpacing = 1f;
+
         private class Baker : Baker<WormAuthoring>
         {
             public override void Bake(WormAuthoring authoring)
@@ -29,6 +32,14 @@ namespace Authoring
                 {
                     Radius = authoring.collisionRadius
                 });
+
+                AddComponent(entity, new WormComponent()
+                {
+                    SegmentPrefab = GetEntity(authoring.segmentPrefab, TransformUsageFlags.Dynamic),
+                    SegmentSpacing = authoring.segmentSpacing
+                });
+
+                AddBuffer<WormPathElement>(entity);
             }
         }
     }

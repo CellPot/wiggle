@@ -14,8 +14,9 @@ namespace Systems
         {
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
-            foreach (var (wormTransform, wormCollision, wormEntity) in SystemAPI
-                         .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>>().WithEntityAccess())
+            foreach (var (wormTransform, wormCollision, worm, wormEntity) in SystemAPI
+                         .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>, RefRO<WormComponent>>()
+                         .WithEntityAccess())
             {
                 float2 wormPos = wormTransform.ValueRO.Position.xy;
 
@@ -29,6 +30,18 @@ namespace Systems
                     if (distance <= combinedRadius)
                     {
                         ecb.DestroyEntity(foodEntity);
+
+                        int segmentCount = 0;
+                        foreach (var segmentComponent in SystemAPI.Query<RefRO<WormSegmentComponent>>())
+                        {
+                            if (segmentComponent.ValueRO.WormOwner == wormEntity)
+                                segmentCount++;
+                        }
+
+                        var newSegment = ecb.Instantiate(worm.ValueRO.SegmentPrefab);
+                        ecb.SetComponent(newSegment,
+                            new WormSegmentComponent { WormOwner = wormEntity, SegmentIndex = segmentCount });
+                        ecb.SetComponent(newSegment, LocalTransform.FromPosition(wormTransform.ValueRO.Position));
                     }
                 }
             }
