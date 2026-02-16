@@ -11,8 +11,15 @@ namespace Authoring
         public float turnSpeed = 10f;
         public float collisionRadius = 0.5f;
 
+        [Header("Segment Settings")]
         public GameObject segmentPrefab;
         public float segmentSpacing = 1f;
+        
+        [Header("Growth Settings")]
+        public float baseScale = 1f;
+        public float maxScale = 3f;
+        public float scalePerFood = 0.05f;
+        public float growthSpeed = 2f;
 
         private class Baker : Baker<WormAuthoring>
         {
@@ -36,7 +43,13 @@ namespace Authoring
                 AddComponent(entity, new WormComponent()
                 {
                     SegmentPrefab = GetEntity(authoring.segmentPrefab, TransformUsageFlags.Dynamic),
-                    SegmentSpacing = authoring.segmentSpacing
+                    SegmentSpacing = authoring.segmentSpacing,
+                    CurrentScale = authoring.baseScale,
+                    TargetScale = authoring.baseScale,
+                    BaseScale = authoring.baseScale,
+                    MaxScale = authoring.maxScale,
+                    ScalePerFood = authoring.scalePerFood,
+                    GrowthSpeed = authoring.growthSpeed,
                 });
 
                 AddBuffer<WormPathElement>(entity);

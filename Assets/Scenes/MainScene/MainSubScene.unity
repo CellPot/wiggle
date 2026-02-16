@@ -231,6 +231,10 @@ MonoBehaviour:
   collisionRadius: 0.5
   segmentPrefab: {fileID: 8595109953255309657, guid: 31f4c24d818f41945ab86a5336d837a4, type: 3}
   segmentSpacing: 0.85
+  baseScale: 1
+  maxScale: 4
+  scalePerFood: 0.05
+  growthSpeed: 2
 --- !u!1 &2037706452
 GameObject:
   m_ObjectHideFlags: 0
