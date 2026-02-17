@@ -10,16 +10,17 @@ namespace Authoring
         public float speed = 15f;
         public float turnSpeed = 10f;
         public float collisionRadius = 0.5f;
-
-        [Header("Segment Settings")]
         public GameObject segmentPrefab;
-        public float segmentSpacing = 1f;
-        
-        [Header("Growth Settings")]
+        public float baseSegmentSpacing = 1f;
+
+        [Header("Growth Settings")] 
         public float baseScale = 1f;
         public float maxScale = 3f;
-        public float scalePerFood = 0.05f;
+        public float scalePerScore = 0.01f; // Grow 0.01 per score point
         public float growthSpeed = 2f;
+
+        [Header("Segment Settings")] 
+        public int scorePerSegment = 5; // Add segment every 5 score
 
         private class Baker : Baker<WormAuthoring>
         {
@@ -40,16 +41,20 @@ namespace Authoring
                     Radius = authoring.collisionRadius
                 });
 
-                AddComponent(entity, new WormComponent()
+                AddComponent(entity, new WormComponent
                 {
                     SegmentPrefab = GetEntity(authoring.segmentPrefab, TransformUsageFlags.Dynamic),
-                    SegmentSpacing = authoring.segmentSpacing,
+                    BaseSegmentSpacing = authoring.baseSegmentSpacing,
                     CurrentScale = authoring.baseScale,
                     TargetScale = authoring.baseScale,
                     BaseScale = authoring.baseScale,
+                    BaseCollisionRadius = authoring.collisionRadius,
                     MaxScale = authoring.maxScale,
-                    ScalePerFood = authoring.scalePerFood,
                     GrowthSpeed = authoring.growthSpeed,
+                    Score = 0,
+                    ScorePerSegment = authoring.scorePerSegment,
+                    ScalePerScore = authoring.scalePerScore,
+                    LastSegmentScore = 0
                 });
 
                 AddBuffer<WormPathElement>(entity);

@@ -7,7 +7,7 @@ using Unity.Transforms;
 namespace Systems
 {
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(WormMovementSystem))]
+    [UpdateAfter(typeof(WormPathRecordingSystem))]
     public partial struct WormSegmentFollowPathSystem : ISystem
     {
         [BurstCompile]
@@ -15,6 +15,7 @@ namespace Systems
         {
             var wormLookup = SystemAPI.GetComponentLookup<WormComponent>(true);
             var pathBufferLookup = SystemAPI.GetBufferLookup<WormPathElement>(true);
+            var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
 
             foreach (var (segment, transform) in SystemAPI
                          .Query<RefRO<WormSegmentComponent>, RefRW<LocalTransform>>())
@@ -24,36 +25,98 @@ namespace Systems
                 if (wormOwner == Entity.Null || !wormLookup.HasComponent(wormOwner))
                     continue;
 
-                var wormHead = wormLookup[wormOwner];
+                var worm = wormLookup[wormOwner];
                 var pathBuffer = pathBufferLookup[wormOwner];
 
                 if (pathBuffer.Length < 2)
                     continue;
 
-                float targetDistance = (segment.ValueRO.SegmentIndex + 1) * wormHead.SegmentSpacing;
+                // Use CurrentScale for smooth transitions
+                float actualSpacing = worm.BaseSegmentSpacing * worm.CurrentScale;
+                float targetDistance = (segment.ValueRO.SegmentIndex + 1) * actualSpacing;
 
-                float accumulatedDistance = 0f;
-                float3 targetPosition = transform.ValueRO.Position;
-                int pathLength = pathBuffer.Length;
+                // Using cumulative distance: newest sample is at the end
+                var last = pathBuffer[pathBuffer.Length - 1];
+                var first = pathBuffer[0];
+                float availablePath = last.CumulativeDistance - first.CumulativeDistance;
 
-                for (int i = 0; i < pathLength - 1; i++)
+                // If we don't have enough path, follow the segment in front or the head
+                if (availablePath < targetDistance)
                 {
-                    float3 from = pathBuffer[i].Position;
-                    float3 to = pathBuffer[i + 1].Position;
-                    float segmentLength = math.distance(from, to);
+                    float3 targetPosition = transform.ValueRO.Position;
 
-                    if (accumulatedDistance + segmentLength >= targetDistance)
+                    if (segment.ValueRO.SegmentIndex == 0)
                     {
-                        float remaining = targetDistance - accumulatedDistance;
-                        float t = remaining / segmentLength;
-                        targetPosition = math.lerp(from, to, t);
-                        break;
+                        // First segment - follow the head at closest available distance
+                        if (transformLookup.HasComponent(wormOwner))
+                        {
+                            var headPos = transformLookup[wormOwner].Position;
+                            float3 dirToHead = headPos - transform.ValueRO.Position;
+                            float distToHead = math.length(dirToHead);
+
+                            if (distToHead > actualSpacing)
+                            {
+                                targetPosition = headPos - math.normalize(dirToHead) * actualSpacing;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Follow the segment in front at current spacing
+                        foreach (var (otherSegment, otherTransform) in SystemAPI
+                                     .Query<RefRO<WormSegmentComponent>, RefRO<LocalTransform>>())
+                        {
+                            if (otherSegment.ValueRO.WormOwner == wormOwner &&
+                                otherSegment.ValueRO.SegmentIndex == segment.ValueRO.SegmentIndex - 1)
+                            {
+                                float3 dirToTarget = otherTransform.ValueRO.Position - transform.ValueRO.Position;
+                                float distToTarget = math.length(dirToTarget);
+
+                                if (distToTarget > actualSpacing)
+                                {
+                                    targetPosition = otherTransform.ValueRO.Position -
+                                                     math.normalize(dirToTarget) * actualSpacing;
+                                }
+
+                                break;
+                            }
+                        }
                     }
 
-                    accumulatedDistance += segmentLength;
+                    transform.ValueRW.Position = targetPosition;
+                    continue;
                 }
 
-                transform.ValueRW.Position = targetPosition;
+                // Normal path following using cumulative distances with binary search
+                float desiredCumulative = last.CumulativeDistance - targetDistance;
+
+                // Clamp to available range for extra safety
+                if (desiredCumulative <= first.CumulativeDistance)
+                {
+                    transform.ValueRW.Position = first.Position;
+                    continue;
+                }
+
+                // Binary search for the segment [lo, hi] such that
+                // buffer[lo].cum <= desired < buffer[hi].cum
+                int lo = 0;
+                int hi = pathBuffer.Length - 1;
+                while (lo + 1 < hi)
+                {
+                    int mid = (lo + hi) >> 1;
+                    float midCum = pathBuffer[mid].CumulativeDistance;
+                    if (midCum <= desiredCumulative)
+                        lo = mid;
+                    else
+                        hi = mid;
+                }
+
+                var a = pathBuffer[lo];
+                var b = pathBuffer[hi];
+                float segLen = math.max(1e-5f, b.CumulativeDistance - a.CumulativeDistance);
+                float tLerp = math.saturate((desiredCumulative - a.CumulativeDistance) / segLen);
+                float3 interpPos = math.lerp(a.Position, b.Position, tLerp);
+                transform.ValueRW.Position = interpPos;
             }
         }
     }

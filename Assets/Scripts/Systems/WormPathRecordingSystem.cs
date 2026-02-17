@@ -11,7 +11,6 @@ namespace Systems
     [UpdateAfter(typeof(WormMovementSystem))]
     public partial struct WormPathRecordingSystem : ISystem
     {
-        private const float DistanceBufferMultiplier = 1.5f;
         private NativeHashMap<Entity, int> _wormSegmentCounts;
 
         [BurstCompile]
@@ -32,6 +31,7 @@ namespace Systems
         {
             _wormSegmentCounts.Clear();
 
+            // Count segments per worm once per frame
             foreach (var segment in SystemAPI.Query<RefRO<WormSegmentComponent>>())
             {
                 if (segment.ValueRO.WormOwner == Entity.Null) continue;
@@ -48,35 +48,54 @@ namespace Systems
             {
                 var currentPos = transform.ValueRO.Position;
 
-                if (pathBuffer.Length == 0 || math.distancesq(currentPos, pathBuffer[0].Position) > 0.01f)
+                // If buffer empty, seed it with current position at distance 0
+                if (pathBuffer.Length == 0)
                 {
-                    pathBuffer.Insert(0, new WormPathElement { Position = currentPos });
+                    pathBuffer.Add(new WormPathElement { Position = currentPos, CumulativeDistance = 0f });
+                    continue;
                 }
 
+                // Compute distance from last sampled position and append only if moved enough
+                var last = pathBuffer[pathBuffer.Length - 1];
+
+                // Use CurrentScale for smooth transitions
+                float actualSpacing = worm.ValueRO.BaseSegmentSpacing * worm.ValueRO.CurrentScale;
+                float minSampleDistance = math.max(0.05f, actualSpacing * 0.01f); // sample ~4x per spacing
+
+                float moved = math.distance(last.Position, currentPos);
+                if (moved >= minSampleDistance)
+                {
+                    pathBuffer.Add(new WormPathElement
+                    {
+                        Position = currentPos,
+                        CumulativeDistance = last.CumulativeDistance + moved
+                    });
+                }
+
+                // Prune old samples to keep only the distance we need
                 int segmentCount = 0;
                 if (_wormSegmentCounts.ContainsKey(wormEntity))
                     segmentCount = _wormSegmentCounts[wormEntity];
 
-                float totalDistanceNeeded = segmentCount * worm.ValueRO.SegmentSpacing;
+                // Keep 3x the needed following distance to handle sharp turns
+                float totalDistanceNeeded = (segmentCount + 1) * actualSpacing * 3f;
+                float minKeepPoints = 32; // avoid over-pruning for small worms
 
-                float accumulatedDistance = 0f;
-                int keepUntilIndex = pathBuffer.Length;
+                // Ensure we have latest last after potential add
+                last = pathBuffer[pathBuffer.Length - 1];
 
-                for (int i = 0; i < pathBuffer.Length - 1; i++)
+                // Remove from the beginning while we exceed needed history
+                while (pathBuffer.Length > minKeepPoints)
                 {
-                    float segmentDistance = math.distance(pathBuffer[i].Position, pathBuffer[i + 1].Position);
-                    accumulatedDistance += segmentDistance;
-
-                    if (accumulatedDistance > totalDistanceNeeded * DistanceBufferMultiplier)
+                    var first = pathBuffer[0];
+                    if (last.CumulativeDistance - first.CumulativeDistance > totalDistanceNeeded)
                     {
-                        keepUntilIndex = i + 1;
+                        pathBuffer.RemoveAt(0);
+                    }
+                    else
+                    {
                         break;
                     }
-                }
-
-                while (pathBuffer.Length > keepUntilIndex && pathBuffer.Length > 10)
-                {
-                    pathBuffer.RemoveAt(pathBuffer.Length - 1);
                 }
             }
         }

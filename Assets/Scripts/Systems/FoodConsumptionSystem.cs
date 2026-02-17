@@ -1,4 +1,5 @@
 using Components;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -7,15 +8,17 @@ using Unity.Transforms;
 namespace Systems
 {
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(WormMovementSystem))]
+    [UpdateAfter(typeof(WormPathRecordingSystem))] 
     public partial struct FoodConsumptionSystem : ISystem
     {
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
             foreach (var (wormTransform, wormCollision, worm, wormEntity) in SystemAPI
-                         .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>, RefRW<WormComponent>>()
+                         .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>,
+                             RefRW<WormComponent>>()
                          .WithEntityAccess())
             {
                 float2 wormPos = wormTransform.ValueRO.Position.xy;
@@ -31,28 +34,50 @@ namespace Systems
                     {
                         ecb.DestroyEntity(foodEntity);
 
+                        // Add score from food
+                        int foodValue = foodComponent.ValueRO.Value;
+                        worm.ValueRW.Score += foodValue;
+
+                        // Calculate growth based on score
+                        float growthAmount = foodValue * worm.ValueRO.ScalePerScore;
                         float newTargetScale = math.min(
-                            worm.ValueRO.TargetScale + worm.ValueRO.ScalePerFood,
+                            worm.ValueRO.TargetScale + growthAmount,
                             worm.ValueRO.MaxScale
                         );
-
                         worm.ValueRW.TargetScale = newTargetScale;
 
-                        int segmentCount = 0;
-                        foreach (var segmentComponent in SystemAPI.Query<RefRO<WormSegmentComponent>>())
+                        // Check if we should spawn segments based on score
+                        int scoreGained = worm.ValueRO.Score - worm.ValueRO.LastSegmentScore;
+                        if (scoreGained >= worm.ValueRO.ScorePerSegment)
                         {
-                            if (segmentComponent.ValueRO.WormOwner == wormEntity)
-                                segmentCount++;
-                        }
+                            int segmentsToAdd = scoreGained / worm.ValueRO.ScorePerSegment;
+                            worm.ValueRW.LastSegmentScore += segmentsToAdd * worm.ValueRO.ScorePerSegment;
 
-                        var newSegment = ecb.Instantiate(worm.ValueRO.SegmentPrefab);
-                        ecb.SetComponent(newSegment,
-                            new WormSegmentComponent { WormOwner = wormEntity, SegmentIndex = segmentCount });
-                        ecb.SetComponent(newSegment, LocalTransform.FromPositionRotationScale(
-                            wormTransform.ValueRO.Position,
-                            quaternion.identity,
-                            worm.ValueRO.CurrentScale
-                        ));
+                            // Count existing segments
+                            int segmentCount = 0;
+                            foreach (var segment in SystemAPI.Query<RefRO<WormSegmentComponent>>())
+                            {
+                                if (segment.ValueRO.WormOwner == wormEntity)
+                                    segmentCount++;
+                            }
+
+                            // Spawn multiple segments if earned enough score
+                            for (int i = 0; i < segmentsToAdd; i++)
+                            {
+                                var newSegment = ecb.Instantiate(worm.ValueRO.SegmentPrefab);
+                                ecb.SetComponent(newSegment, new WormSegmentComponent
+                                {
+                                    WormOwner = wormEntity,
+                                    SegmentIndex = segmentCount + i
+                                });
+
+                                ecb.SetComponent(newSegment, LocalTransform.FromPositionRotationScale(
+                                    wormTransform.ValueRO.Position,
+                                    quaternion.identity,
+                                    worm.ValueRO.CurrentScale
+                                ));
+                            }
+                        }
                     }
                 }
             }

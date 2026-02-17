@@ -226,15 +226,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9281495c5edf42bbb51aa275597b4d27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Authoring.WormAuthoring
-  speed: 10
+  speed: 27.81
   turnSpeed: 5
   collisionRadius: 0.5
   segmentPrefab: {fileID: 8595109953255309657, guid: 31f4c24d818f41945ab86a5336d837a4, type: 3}
-  segmentSpacing: 0.85
+  baseSegmentSpacing: 0.3
   baseScale: 1
-  maxScale: 4
-  scalePerFood: 0.05
-  growthSpeed: 2
+  maxScale: 10
+  scalePerScore: 0.25
+  growthSpeed: 5
+  scorePerSegment: 1
 --- !u!1 &2037706452
 GameObject:
   m_ObjectHideFlags: 0

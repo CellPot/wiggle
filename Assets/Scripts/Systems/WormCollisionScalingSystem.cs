@@ -17,9 +17,7 @@ namespace Systems
             foreach (var (worm, collision) in SystemAPI
                          .Query<RefRO<WormComponent>, RefRW<WormSegmentCollisionComponent>>())
             {
-                //TODO: Hardcoded base radius
-                float baseRadius = 0.5f;
-                collision.ValueRW.Radius = baseRadius * worm.ValueRO.CurrentScale;
+                collision.ValueRW.Radius = worm.ValueRO.BaseCollisionRadius * worm.ValueRO.CurrentScale;
             }
 
             // Segment
@@ -33,8 +31,7 @@ namespace Systems
                     continue;
 
                 var worm = wormLookup[segment.ValueRO.WormOwner];
-                float baseRadius = 0.5f;
-                collision.ValueRW.Radius = baseRadius * worm.CurrentScale;
+                collision.ValueRW.Radius = worm.BaseCollisionRadius * worm.CurrentScale;
             }
         }
     }
