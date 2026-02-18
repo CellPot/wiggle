@@ -24,7 +24,11 @@ namespace Systems
 
                 worm.ValueRW.Direction = newDirection;
 
-                localTransform.ValueRW.Position += new float3(newDirection, 0) * worm.ValueRO.Speed * deltaTime;
+                var newPos = localTransform.ValueRO.Position +
+                             new float3(newDirection, 0) * worm.ValueRO.Speed * deltaTime;
+                newPos.z = 0;
+
+                localTransform.ValueRW.Position = newPos;
                 localTransform.ValueRW.Rotation = quaternion.RotateZ(newAngle);
             }
         }

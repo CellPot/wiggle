@@ -8,7 +8,7 @@ using Unity.Transforms;
 namespace Systems
 {
     [UpdateInGroup(typeof(SimulationSystemGroup))]
-    [UpdateAfter(typeof(WormPathRecordingSystem))] 
+    [UpdateAfter(typeof(WormPathRecordingSystem))]
     public partial struct FoodConsumptionSystem : ISystem
     {
         [BurstCompile]
@@ -34,11 +34,9 @@ namespace Systems
                     {
                         ecb.DestroyEntity(foodEntity);
 
-                        // Add score from food
                         int foodValue = foodComponent.ValueRO.Value;
                         worm.ValueRW.Score += foodValue;
 
-                        // Calculate growth based on score
                         float growthAmount = foodValue * worm.ValueRO.ScalePerScore;
                         float newTargetScale = math.min(
                             worm.ValueRO.TargetScale + growthAmount,
@@ -46,14 +44,12 @@ namespace Systems
                         );
                         worm.ValueRW.TargetScale = newTargetScale;
 
-                        // Check if we should spawn segments based on score
                         int scoreGained = worm.ValueRO.Score - worm.ValueRO.LastSegmentScore;
                         if (scoreGained >= worm.ValueRO.ScorePerSegment)
                         {
                             int segmentsToAdd = scoreGained / worm.ValueRO.ScorePerSegment;
                             worm.ValueRW.LastSegmentScore += segmentsToAdd * worm.ValueRO.ScorePerSegment;
 
-                            // Count existing segments
                             int segmentCount = 0;
                             foreach (var segment in SystemAPI.Query<RefRO<WormSegmentComponent>>())
                             {
@@ -61,7 +57,6 @@ namespace Systems
                                     segmentCount++;
                             }
 
-                            // Spawn multiple segments if earned enough score
                             for (int i = 0; i < segmentsToAdd; i++)
                             {
                                 var newSegment = ecb.Instantiate(worm.ValueRO.SegmentPrefab);
@@ -71,8 +66,12 @@ namespace Systems
                                     SegmentIndex = segmentCount + i
                                 });
 
+                                int newSegmentIndex = segmentCount + i;
+                                float3 spawnPos = wormTransform.ValueRO.Position;
+                                spawnPos.z = (newSegmentIndex + 1) * 0.01f;
+
                                 ecb.SetComponent(newSegment, LocalTransform.FromPositionRotationScale(
-                                    wormTransform.ValueRO.Position,
+                                    spawnPos,
                                     quaternion.identity,
                                     worm.ValueRO.CurrentScale
                                 ));

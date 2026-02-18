@@ -31,23 +31,19 @@ namespace Systems
                 if (pathBuffer.Length < 2)
                     continue;
 
-                // Use CurrentScale for smooth transitions
                 float actualSpacing = worm.BaseSegmentSpacing * worm.CurrentScale;
                 float targetDistance = (segment.ValueRO.SegmentIndex + 1) * actualSpacing;
 
-                // Using cumulative distance: newest sample is at the end
                 var last = pathBuffer[pathBuffer.Length - 1];
                 var first = pathBuffer[0];
                 float availablePath = last.CumulativeDistance - first.CumulativeDistance;
 
-                // If we don't have enough path, follow the segment in front or the head
+                float3 targetPosition = transform.ValueRO.Position;
+
                 if (availablePath < targetDistance)
                 {
-                    float3 targetPosition = transform.ValueRO.Position;
-
                     if (segment.ValueRO.SegmentIndex == 0)
                     {
-                        // First segment - follow the head at closest available distance
                         if (transformLookup.HasComponent(wormOwner))
                         {
                             var headPos = transformLookup[wormOwner].Position;
@@ -62,7 +58,6 @@ namespace Systems
                     }
                     else
                     {
-                        // Follow the segment in front at current spacing
                         foreach (var (otherSegment, otherTransform) in SystemAPI
                                      .Query<RefRO<WormSegmentComponent>, RefRO<LocalTransform>>())
                         {
@@ -82,41 +77,40 @@ namespace Systems
                             }
                         }
                     }
-
-                    transform.ValueRW.Position = targetPosition;
-                    continue;
                 }
-
-                // Normal path following using cumulative distances with binary search
-                float desiredCumulative = last.CumulativeDistance - targetDistance;
-
-                // Clamp to available range for extra safety
-                if (desiredCumulative <= first.CumulativeDistance)
+                else
                 {
-                    transform.ValueRW.Position = first.Position;
-                    continue;
-                }
+                    float desiredCumulative = last.CumulativeDistance - targetDistance;
 
-                // Binary search for the segment [lo, hi] such that
-                // buffer[lo].cum <= desired < buffer[hi].cum
-                int lo = 0;
-                int hi = pathBuffer.Length - 1;
-                while (lo + 1 < hi)
-                {
-                    int mid = (lo + hi) >> 1;
-                    float midCum = pathBuffer[mid].CumulativeDistance;
-                    if (midCum <= desiredCumulative)
-                        lo = mid;
+                    if (desiredCumulative <= first.CumulativeDistance)
+                    {
+                        targetPosition = first.Position;
+                    }
                     else
-                        hi = mid;
+                    {
+                        int lo = 0;
+                        int hi = pathBuffer.Length - 1;
+                        while (lo + 1 < hi)
+                        {
+                            int mid = (lo + hi) >> 1;
+                            float midCum = pathBuffer[mid].CumulativeDistance;
+                            if (midCum <= desiredCumulative)
+                                lo = mid;
+                            else
+                                hi = mid;
+                        }
+
+                        var a = pathBuffer[lo];
+                        var b = pathBuffer[hi];
+                        float segLen = math.max(1e-5f, b.CumulativeDistance - a.CumulativeDistance);
+                        float tLerp = math.saturate((desiredCumulative - a.CumulativeDistance) / segLen);
+                        targetPosition = math.lerp(a.Position, b.Position, tLerp);
+                    }
                 }
 
-                var a = pathBuffer[lo];
-                var b = pathBuffer[hi];
-                float segLen = math.max(1e-5f, b.CumulativeDistance - a.CumulativeDistance);
-                float tLerp = math.saturate((desiredCumulative - a.CumulativeDistance) / segLen);
-                float3 interpPos = math.lerp(a.Position, b.Position, tLerp);
-                transform.ValueRW.Position = interpPos;
+                targetPosition.z = (segment.ValueRO.SegmentIndex + 1) * 0.01f;
+
+                transform.ValueRW.Position = targetPosition;
             }
         }
     }
