@@ -23,6 +23,9 @@ namespace Systems
             {
                 float2 wormPos = wormTransform.ValueRO.Position.xy;
 
+                // Track segments spawned THIS frame for this worm
+                int segmentsSpawnedThisFrame = 0;
+
                 foreach (var (foodTransform, foodComponent, foodEntity) in SystemAPI
                              .Query<RefRO<LocalTransform>, RefRO<FoodComponent>>().WithEntityAccess())
                 {
@@ -50,6 +53,7 @@ namespace Systems
                             int segmentsToAdd = scoreGained / worm.ValueRO.ScorePerSegment;
                             worm.ValueRW.LastSegmentScore += segmentsToAdd * worm.ValueRO.ScorePerSegment;
 
+                            // Count existing segments
                             int segmentCount = 0;
                             foreach (var segment in SystemAPI.Query<RefRO<WormSegmentComponent>>())
                             {
@@ -57,16 +61,20 @@ namespace Systems
                                     segmentCount++;
                             }
 
+                            // Spawn segments, accounting for ones already queued this frame
                             for (int i = 0; i < segmentsToAdd; i++)
                             {
                                 var newSegment = ecb.Instantiate(worm.ValueRO.SegmentPrefab);
+
+                                // Use segmentCount + segments already spawned this frame + current index
+                                int newSegmentIndex = segmentCount + segmentsSpawnedThisFrame + i;
+
                                 ecb.SetComponent(newSegment, new WormSegmentComponent
                                 {
                                     WormOwner = wormEntity,
-                                    SegmentIndex = segmentCount + i
+                                    SegmentIndex = newSegmentIndex
                                 });
 
-                                int newSegmentIndex = segmentCount + i;
                                 float3 spawnPos = wormTransform.ValueRO.Position;
                                 spawnPos.z = (newSegmentIndex + 1) * 0.01f;
 
@@ -76,6 +84,9 @@ namespace Systems
                                     worm.ValueRO.CurrentScale
                                 ));
                             }
+
+                            // Update the counter for this frame
+                            segmentsSpawnedThisFrame += segmentsToAdd;
                         }
                     }
                 }
