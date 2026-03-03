@@ -17,7 +17,6 @@ namespace Systems
 
             foreach (var spawner in SystemAPI.Query<RefRW<BotSpawnerComponent>>())
             {
-                // Count bots manually instead of using .Count()
                 int botCount = 0;
                 foreach (var bot in SystemAPI.Query<RefRO<BotTagComponent>>())
                 {
@@ -43,6 +42,18 @@ namespace Systems
                         );
 
                         ecb.SetComponent(bot, LocalTransform.FromPosition(spawnPos));
+
+                        // Build bot name manually for Burst compatibility
+                        int botNumber = botCount + i + 1;
+                        FixedString64Bytes botName = new FixedString64Bytes();
+                        botName.Append((FixedString32Bytes)"Bot ");
+                        botName.Append(botNumber);
+
+                        ecb.SetComponent(bot, new WormInfoComponent
+                        {
+                            CurrentScore = 0,
+                            Name = botName
+                        });
                     }
                 }
             }

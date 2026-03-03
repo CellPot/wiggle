@@ -1,0 +1,6 @@
+.scoreboard-label {
+    font-size: 18px;
+    color: rgb(255, 255, 255);
+    margin: 2px;
+    
+}

@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:VisualElement name="scoreboard-container" style="position: absolute; top: 2px; left: 4px; background-color: rgba(0, 0, 0, 0); padding: 15px; border-radius: 10px; min-width: 250px;">
+        <ui:Label name="player-score" text="Player: 0" style="font-size: 24px; color: rgb(255, 255, 255); -unity-font-style: bold; margin-bottom: 15px;"/>
+        <ui:VisualElement name="bot-scores-container" style="margin-top: 10px;">
+            <ui:Label text="Top Bots:" enabled="true" style="font-size: 18px; color: rgb(200, 200, 200); margin-bottom: 5px;"/>
+            <ui:ScrollView name="bot-scores-list" style="max-height: 300px;"/>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

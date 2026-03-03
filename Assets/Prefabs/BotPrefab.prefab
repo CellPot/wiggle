@@ -411,7 +411,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9281495c5edf42bbb51aa275597b4d27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Authoring.WormAuthoring
-  speed: 27.81
+  speed: 25
   turnSpeed: 5
   collisionRadius: 0.5
   segmentPrefab: {fileID: 8638717039858993261, guid: cc08272143bdd5a48a7228365f0d88e8, type: 3}
@@ -437,6 +437,7 @@ MonoBehaviour:
   directionChangeInterval: 2
   foodDetectionRadius: 15
   maxDistanceFromCenter: 200
+  botName: Bot
 --- !u!1 &5658781008011620127
 GameObject:
   m_ObjectHideFlags: 0
