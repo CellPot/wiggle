@@ -13,14 +13,13 @@ namespace Authoring
         public GameObject segmentPrefab;
         public float baseSegmentSpacing = 1f;
 
-        [Header("Growth Settings")] 
-        public float baseScale = 1f;
+        [Header("Growth Settings")] public float baseScale = 1f;
         public float maxScale = 3f;
-        public float scalePerScore = 0.01f; // Grow 0.01 per score point
+        public float scalePerScore = 0.01f;
         public float growthSpeed = 2f;
 
-        [Header("Segment Settings")] 
-        public int scorePerSegment = 5; // Add segment every 5 score
+        [Header("Segment Settings")] public int scorePerSegment = 5;
+        public int initialSegmentCount = 3; // NEW: Starting segments
 
         private class Baker : Baker<WormAuthoring>
         {
@@ -54,10 +53,14 @@ namespace Authoring
                     Score = 0,
                     ScorePerSegment = authoring.scorePerSegment,
                     ScalePerScore = authoring.scalePerScore,
-                    LastSegmentScore = 0
+                    LastSegmentScore = 0,
+                    InitialSegmentCount = authoring.initialSegmentCount // NEW
                 });
 
                 AddBuffer<WormPathElement>(entity);
+
+                // NEW: Tag for initialization
+                AddComponent(entity, new WormNeedsInitializationTag());
             }
         }
     }

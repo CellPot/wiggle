@@ -13,10 +13,11 @@ namespace Components
         public float GrowthSpeed;
         public float BaseCollisionRadius;
 
-        // Score-based system
-        public int Score; // Total score accumulated
-        public int ScorePerSegment; // Score needed to add a segment
-        public float ScalePerScore; // How much to grow per score point
-        public int LastSegmentScore; // Score when we last added a segment
+        public int Score;
+        public int ScorePerSegment;
+        public float ScalePerScore;
+        public int LastSegmentScore;
+
+        public int InitialSegmentCount;
     }
 }
