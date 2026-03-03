@@ -19,7 +19,7 @@ namespace Authoring
         public float growthSpeed = 2f;
 
         [Header("Segment Settings")] public int scorePerSegment = 5;
-        public int initialSegmentCount = 3; // NEW: Starting segments
+        public int initialSegmentCount = 3;
 
         private class Baker : Baker<WormAuthoring>
         {
@@ -54,12 +54,10 @@ namespace Authoring
                     ScorePerSegment = authoring.scorePerSegment,
                     ScalePerScore = authoring.scalePerScore,
                     LastSegmentScore = 0,
-                    InitialSegmentCount = authoring.initialSegmentCount // NEW
+                    InitialSegmentCount = authoring.initialSegmentCount
                 });
 
                 AddBuffer<WormPathElement>(entity);
-
-                // NEW: Tag for initialization
                 AddComponent(entity, new WormNeedsInitializationTag());
             }
         }

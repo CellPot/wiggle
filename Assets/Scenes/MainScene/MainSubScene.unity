@@ -240,8 +240,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Authoring.FoodSpawnerAuthoring
   foodPrefab: {fileID: 3801570937684508439, guid: b68cd90dc458abf4c807918a14c0b35c, type: 3}
-  maxFoodCount: 50
-  spawnRadius: 100
+  maxFoodCount: 75
+  spawnRadius: 200
   spawnInterval: 1
   foodScale: 0.5
 --- !u!4 &354541476
@@ -251,6 +251,53 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 354541474}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &391770850
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 391770852}
+  - component: {fileID: 391770851}
+  m_Layer: 0
+  m_Name: BotSpawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &391770851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 391770850}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50d78e101f524cb7916b3ab60a87a91c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Authoring.BotSpawnerAuthoring
+  botPrefab: {fileID: 5533679040690866177, guid: 2afed25f57911b14da427888f6618788, type: 3}
+  maxBotCount: 2
+  spawnRadius: 100
+--- !u!4 &391770852
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 391770850}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -999,3 +1046,4 @@ SceneRoots:
   - {fileID: 2037706454}
   - {fileID: 563687722}
   - {fileID: 354541476}
+  - {fileID: 391770852}
