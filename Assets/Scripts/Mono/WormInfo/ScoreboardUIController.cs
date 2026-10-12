@@ -103,17 +103,13 @@ namespace Mono.WormInfo
 
         void RequestRespawn()
         {
-            var query = entityManager.CreateEntityQuery(new EntityQueryDesc
-            {
-                All = new[] { ComponentType.ReadWrite<PlayerDeadComponent>() },
-                Options = EntityQueryOptions.IncludeDisabledEntities
-            });
+            var query = entityManager.CreateEntityQuery(ComponentType.ReadWrite<PlayerDeadComponent>());
 
-            if (query.TryGetSingletonEntity<PlayerDeadComponent>(out var player))
+            if (query.TryGetSingletonEntity<PlayerDeadComponent>(out var marker))
             {
-                var dead = entityManager.GetComponentData<PlayerDeadComponent>(player);
+                var dead = entityManager.GetComponentData<PlayerDeadComponent>(marker);
                 dead.RespawnRequested = true;
-                entityManager.SetComponentData(player, dead);
+                entityManager.SetComponentData(marker, dead);
             }
 
             query.Dispose();
@@ -156,19 +152,19 @@ namespace Mono.WormInfo
         void UpdateScoreboard()
         {
             // Get player score
-            // Include disabled entities: a dead player is disabled until it respawns
-            var playerQuery = entityManager.CreateEntityQuery(new EntityQueryDesc
-            {
-                All = new[]
-                {
-                    ComponentType.ReadOnly<PlayerTagComponent>(),
-                    ComponentType.ReadOnly<WormInfoComponent>()
-                },
-                Options = EntityQueryOptions.IncludeDisabledEntities
-            });
+            var playerQuery = entityManager.CreateEntityQuery(
+                ComponentType.ReadOnly<PlayerTagComponent>(),
+                ComponentType.ReadOnly<WormInfoComponent>()
+            );
+            var deadQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PlayerDeadComponent>());
 
-            bool isDead = false;
-            if (!playerQuery.IsEmpty)
+            // The player entity is destroyed on death; the dead marker holds the final score
+            bool isDead = deadQuery.TryGetSingleton<PlayerDeadComponent>(out var deadState);
+            if (isDead)
+            {
+                gameOverScreen.Detail.text = $"Final score: {deadState.FinalScore}";
+            }
+            else if (!playerQuery.IsEmpty)
             {
                 var playerEntity = playerQuery.GetSingletonEntity();
                 var playerInfo = entityManager.GetComponentData<WormInfoComponent>(playerEntity);
@@ -182,10 +178,6 @@ namespace Mono.WormInfo
                         ? new Color(0.8f, 0.3f, 0.2f)
                         : new Color(1f, 0.8f, 0.2f);
                 }
-
-                isDead = entityManager.HasComponent<PlayerDeadComponent>(playerEntity);
-                if (isDead)
-                    gameOverScreen.Detail.text = $"Final score: {playerInfo.CurrentScore}";
             }
 
             gameOverScreen.SetVisible(isDead);
@@ -228,6 +220,7 @@ namespace Mono.WormInfo
             }
 
             playerQuery.Dispose();
+            deadQuery.Dispose();
             botQuery.Dispose();
         }
     }

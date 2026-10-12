@@ -131,19 +131,20 @@ namespace Systems
                 ecb.DestroyEntity(segmentEntity);
             }
 
-            // Bots are destroyed (BotSpawnSystem refills them); the player is only disabled
-            // so it can be reset in place on respawn.
+            // Dead worms are destroyed. BotSpawnSystem refills bots; for the player, a
+            // PlayerDeadComponent marker keeps the game-over state until PlayerSpawnSystem respawns it.
             foreach (var deadWorm in dead)
             {
                 if (SystemAPI.HasComponent<PlayerTagComponent>(deadWorm))
                 {
-                    ecb.AddComponent<Disabled>(deadWorm);
-                    ecb.AddComponent(deadWorm, new PlayerDeadComponent());
+                    var marker = ecb.CreateEntity();
+                    ecb.AddComponent(marker, new PlayerDeadComponent
+                    {
+                        FinalScore = SystemAPI.GetComponent<WormInfoComponent>(deadWorm).CurrentScore
+                    });
                 }
-                else
-                {
-                    ecb.DestroyEntity(deadWorm);
-                }
+
+                ecb.DestroyEntity(deadWorm);
             }
         }
     }
