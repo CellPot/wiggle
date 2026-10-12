@@ -44,7 +44,7 @@ namespace Systems
                         ecb.SetComponent(bot, LocalTransform.FromPosition(spawnPos));
 
                         // Build bot name manually for Burst compatibility
-                        int botNumber = botCount + i + 1;
+                        int botNumber = ++spawner.ValueRW.NextBotNumber;
                         FixedString64Bytes botName = new FixedString64Bytes();
                         botName.Append((FixedString32Bytes)"Bot ");
                         botName.Append(botNumber);

@@ -7,5 +7,6 @@ namespace Components
         public Entity BotPrefab;
         public int MaxBotCount;
         public float SpawnRadius;
+        public int NextBotNumber;
     }
 }

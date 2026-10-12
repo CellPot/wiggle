@@ -131,8 +131,20 @@ namespace Systems
                 ecb.DestroyEntity(segmentEntity);
             }
 
+            // Bots are destroyed (BotSpawnSystem refills them); the player is only disabled
+            // so it can be reset in place on respawn.
             foreach (var deadWorm in dead)
-                ecb.DestroyEntity(deadWorm);
+            {
+                if (SystemAPI.HasComponent<PlayerTagComponent>(deadWorm))
+                {
+                    ecb.AddComponent<Disabled>(deadWorm);
+                    ecb.AddComponent(deadWorm, new PlayerDeadComponent());
+                }
+                else
+                {
+                    ecb.DestroyEntity(deadWorm);
+                }
+            }
         }
     }
 }

@@ -13,6 +13,8 @@ namespace Mono.WormInfo
         private UIDocument uiDocument;
         private Label playerScoreLabel;
         private VisualElement botScoresContainer;
+        private VisualElement gameOverOverlay;
+        private Label gameOverScoreLabel;
 
         private EntityManager entityManager;
 
@@ -25,6 +27,43 @@ namespace Mono.WormInfo
             botScoresContainer = root.Q<VisualElement>("bot-scores-list");
 
             entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+
+            BuildGameOverOverlay(root);
+        }
+
+        void BuildGameOverOverlay(VisualElement root)
+        {
+            gameOverOverlay = new VisualElement();
+            gameOverOverlay.pickingMode = PickingMode.Ignore;
+            gameOverOverlay.style.position = Position.Absolute;
+            gameOverOverlay.style.left = 0;
+            gameOverOverlay.style.right = 0;
+            gameOverOverlay.style.top = 0;
+            gameOverOverlay.style.bottom = 0;
+            gameOverOverlay.style.alignItems = Align.Center;
+            gameOverOverlay.style.justifyContent = Justify.Center;
+            gameOverOverlay.style.backgroundColor = new Color(0f, 0f, 0f, 0.5f);
+            gameOverOverlay.style.display = DisplayStyle.None;
+
+            var title = new Label("Game Over");
+            title.style.fontSize = 48;
+            title.style.color = Color.white;
+            title.style.unityFontStyleAndWeight = FontStyle.Bold;
+
+            gameOverScoreLabel = new Label();
+            gameOverScoreLabel.style.fontSize = 24;
+            gameOverScoreLabel.style.color = Color.white;
+            gameOverScoreLabel.style.marginTop = 10;
+
+            var hint = new Label("Click or press Space to respawn");
+            hint.style.fontSize = 18;
+            hint.style.color = new Color(0.8f, 0.8f, 0.8f);
+            hint.style.marginTop = 20;
+
+            gameOverOverlay.Add(title);
+            gameOverOverlay.Add(gameOverScoreLabel);
+            gameOverOverlay.Add(hint);
+            root.Add(gameOverOverlay);
         }
 
         void Update()
@@ -35,16 +74,27 @@ namespace Mono.WormInfo
         void UpdateScoreboard()
         {
             // Get player score
-            var playerQuery = entityManager.CreateEntityQuery(
-                ComponentType.ReadOnly<PlayerTagComponent>(),
-                ComponentType.ReadOnly<WormInfoComponent>()
-            );
+            // Include disabled entities: a dead player is disabled until it respawns
+            var playerQuery = entityManager.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[]
+                {
+                    ComponentType.ReadOnly<PlayerTagComponent>(),
+                    ComponentType.ReadOnly<WormInfoComponent>()
+                },
+                Options = EntityQueryOptions.IncludeDisabledEntities
+            });
 
             if (!playerQuery.IsEmpty)
             {
                 var playerEntity = playerQuery.GetSingletonEntity();
                 var playerInfo = entityManager.GetComponentData<WormInfoComponent>(playerEntity);
                 playerScoreLabel.text = $"{playerInfo.Name}: {playerInfo.CurrentScore}";
+
+                bool isDead = entityManager.HasComponent<PlayerDeadComponent>(playerEntity);
+                gameOverOverlay.style.display = isDead ? DisplayStyle.Flex : DisplayStyle.None;
+                if (isDead)
+                    gameOverScoreLabel.text = $"Final score: {playerInfo.CurrentScore}";
             }
 
             // Get bot scores
