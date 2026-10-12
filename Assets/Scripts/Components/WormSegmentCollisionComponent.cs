@@ -4,7 +4,8 @@ namespace Components
 {
     public struct WormSegmentCollisionComponent : IComponentData
     {
-        //TODO: Current & initial Radius
+        // Current radius, rewritten every frame by WormCollisionScalingSystem as
+        // WormComponent.BaseCollisionRadius * CurrentScale.
         public float Radius;
     }
 }
