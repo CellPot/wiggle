@@ -7,7 +7,9 @@ using Unity.Transforms;
 
 namespace Systems
 {
-    // A head touching another worm's segment (or another head) kills its owner.
+    // A head touching another worm's body kills its owner; the worm that was hit survives.
+    // Two heads touching kill both only when they meet frontally (facing each other);
+    // otherwise the head that was moving more directly into the other dies and the other survives.
     // A dead worm is destroyed together with its segments, and every segment drops food
     // worth an equal share of the worm's score.
     [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -20,7 +22,11 @@ namespace Systems
             public Entity Owner;
             public float2 Position;
             public float Radius;
+            public bool IsHead;
+            public float2 Direction;
         }
+
+        private const float FrontalDot = 0.7f;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -29,12 +35,26 @@ namespace Systems
             state.RequireForUpdate<FoodSpawnerComponent>();
         }
 
+        // Head-on-head contact: frontal collisions kill both; otherwise only the head
+        // pointing more directly at the other one dies.
+        private static bool HeadLoses(float2 headPos, float2 headDir, Collider other, float dist)
+        {
+            float2 toOther = dist > 1e-5f ? (other.Position - headPos) / dist : float2.zero;
+            float myAim = math.dot(headDir, toOther);
+            float theirAim = math.dot(other.Direction, -toOther);
+
+            bool frontal = math.dot(headDir, other.Direction) < -FrontalDot
+                           && myAim > FrontalDot && theirAim > FrontalDot;
+            return frontal || myAim >= theirAim;
+        }
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
             var wormLookup = SystemAPI.GetComponentLookup<WormComponent>(true);
+            var movementLookup = SystemAPI.GetComponentLookup<WormMovementComponent>(true);
 
             var dead = new NativeHashSet<Entity>(8, Allocator.Temp);
 
@@ -67,8 +87,15 @@ namespace Systems
                          .WithEntityAccess())
             {
                 float2 pos = transform.ValueRO.Position.xy;
+                float2 dir = movementLookup.HasComponent(headEntity)
+                    ? movementLookup[headEntity].Direction
+                    : float2.zero;
                 cells.Add((int)math.hash((int2)math.floor(pos / cellSize)),
-                    new Collider { Owner = headEntity, Position = pos, Radius = collision.ValueRO.Radius });
+                    new Collider
+                    {
+                        Owner = headEntity, Position = pos, Radius = collision.ValueRO.Radius,
+                        IsHead = true, Direction = dir
+                    });
             }
 
             foreach (var (headTransform, headCollision, headEntity) in SystemAPI
@@ -79,6 +106,9 @@ namespace Systems
                 float2 headPos = headTransform.ValueRO.Position.xy;
                 float headRadius = headCollision.ValueRO.Radius;
                 int2 headCell = (int2)math.floor(headPos / cellSize);
+                float2 headDir = movementLookup.HasComponent(headEntity)
+                    ? movementLookup[headEntity].Direction
+                    : float2.zero;
 
                 bool hit = false;
                 for (int dx = -1; dx <= 1 && !hit; dx++)
@@ -94,11 +124,15 @@ namespace Systems
                             if (other.Owner == headEntity)
                                 continue;
 
-                            if (math.distance(headPos, other.Position) <= headRadius + other.Radius)
-                            {
-                                hit = true;
-                                break;
-                            }
+                            float dist = math.distance(headPos, other.Position);
+                            if (dist > headRadius + other.Radius)
+                                continue;
+
+                            if (other.IsHead && !HeadLoses(headPos, headDir, other, dist))
+                                continue;
+
+                            hit = true;
+                            break;
                         } while (cells.TryGetNextValue(out other, ref it));
                     }
                 }

@@ -7,7 +7,7 @@ A worm game prototype built with Unity 6 and DOTS/ECS.
 - Bot worms that seek food
 - Food spawning, growth and scoring
 - Segments follow the head along a recorded path
-- Worm-vs-worm collisions: a head touching another worm kills it and its segments drop food
+- Worm-vs-worm collisions: a head hitting another worm's body kills the hitter (the hit worm survives); heads kill each other only in a frontal collision, otherwise the head moving more directly into the other dies. A dead worm's segments drop food
 - Start screen (Play / Quit), pause menu (Esc), game-over screen (Play Again / Quit; Space also works)
 - Bots respawn automatically; the player respawns in place from the game-over screen
 - Boost: hold Space or left mouse to sprint; a stamina bar limits it
