@@ -209,7 +209,7 @@ Transform:
   m_GameObject: {fileID: 2738871432046058107}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0.71214855, w: 0.7020288}
-  m_LocalPosition: {x: 0.548, y: 0, z: 0}
+  m_LocalPosition: {x: 0.432, y: -0.002, z: 0}
   m_LocalScale: {x: 0.18, y: 0.12, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -411,7 +411,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9281495c5edf42bbb51aa275597b4d27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Authoring.WormAuthoring
-  speed: 25
+  speed: 15
   turnSpeed: 5
   collisionRadius: 0.5
   segmentPrefab: {fileID: 8638717039858993261, guid: cc08272143bdd5a48a7228365f0d88e8, type: 3}

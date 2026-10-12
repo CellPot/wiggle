@@ -67,6 +67,15 @@ namespace Systems
                     quaternion.identity,
                     w.BaseScale);
 
+                if (SystemAPI.HasComponent<WormBoostComponent>(entity))
+                {
+                    var boost = SystemAPI.GetComponentRW<WormBoostComponent>(entity);
+                    boost.ValueRW.Stamina = boost.ValueRO.MaxStamina;
+                    boost.ValueRW.Requested = false;
+                    boost.ValueRW.Active = false;
+                    boost.ValueRW.Exhausted = false;
+                }
+
                 ecb.RemoveComponent<Disabled>(entity);
                 ecb.RemoveComponent<PlayerDeadComponent>(entity);
                 ecb.AddComponent<WormNeedsInitializationTag>(entity);

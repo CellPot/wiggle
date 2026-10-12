@@ -14,6 +14,7 @@ namespace Mono.WormInfo
         private UIDocument uiDocument;
         private Label playerScoreLabel;
         private VisualElement botScoresContainer;
+        private VisualElement staminaFill;
         private MenuScreen startScreen;
         private MenuScreen pauseScreen;
         private MenuScreen gameOverScreen;
@@ -32,11 +33,36 @@ namespace Mono.WormInfo
 
             entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
+            BuildStaminaBar(root);
             BuildScreens(root);
 
             // The game waits on the start screen until Play is pressed
             SetSimulationEnabled(false);
             startScreen.SetVisible(true);
+        }
+
+        void BuildStaminaBar(VisualElement root)
+        {
+            var bar = new VisualElement();
+            bar.pickingMode = PickingMode.Ignore;
+            bar.style.position = Position.Absolute;
+            bar.style.bottom = 24;
+            bar.style.left = Length.Percent(50);
+            bar.style.width = 240;
+            bar.style.marginLeft = -120;
+            bar.style.height = 12;
+            bar.style.backgroundColor = new Color(0f, 0f, 0f, 0.5f);
+            bar.style.borderTopLeftRadius = bar.style.borderTopRightRadius =
+                bar.style.borderBottomLeftRadius = bar.style.borderBottomRightRadius = 6;
+            bar.style.overflow = Overflow.Hidden;
+
+            staminaFill = new VisualElement();
+            staminaFill.pickingMode = PickingMode.Ignore;
+            staminaFill.style.height = Length.Percent(100);
+            staminaFill.style.backgroundColor = new Color(1f, 0.8f, 0.2f);
+            bar.Add(staminaFill);
+
+            root.Add(bar);
         }
 
         void BuildScreens(VisualElement root)
@@ -147,6 +173,15 @@ namespace Mono.WormInfo
                 var playerEntity = playerQuery.GetSingletonEntity();
                 var playerInfo = entityManager.GetComponentData<WormInfoComponent>(playerEntity);
                 playerScoreLabel.text = $"{playerInfo.Name}: {playerInfo.CurrentScore}";
+
+                if (entityManager.HasComponent<WormBoostComponent>(playerEntity))
+                {
+                    var boost = entityManager.GetComponentData<WormBoostComponent>(playerEntity);
+                    staminaFill.style.width = Length.Percent(100f * boost.Stamina / boost.MaxStamina);
+                    staminaFill.style.backgroundColor = boost.Exhausted
+                        ? new Color(0.8f, 0.3f, 0.2f)
+                        : new Color(1f, 0.8f, 0.2f);
+                }
 
                 isDead = entityManager.HasComponent<PlayerDeadComponent>(playerEntity);
                 if (isDead)

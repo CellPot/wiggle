@@ -354,6 +354,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Authoring.PlayerAuthoring
   playerName: Player
+  boostSpeedMultiplier: 1.8
+  maxStamina: 100
+  staminaDrainPerSecond: 35
+  staminaRegenPerSecond: 20
+  resumeFraction: 0.25
 --- !u!114 &563687724
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -366,7 +371,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9281495c5edf42bbb51aa275597b4d27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Authoring.WormAuthoring
-  speed: 25
+  speed: 15
   turnSpeed: 5
   collisionRadius: 0.5
   segmentPrefab: {fileID: 8638717039858993261, guid: 9249e6b90d683a24b91534c7c962ab13, type: 3}
@@ -403,7 +408,7 @@ Transform:
   m_GameObject: {fileID: 763306365}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0.71214855, w: 0.7020288}
-  m_LocalPosition: {x: 0.548, y: 0, z: 0}
+  m_LocalPosition: {x: 0.456, y: -0.001, z: 0}
   m_LocalScale: {x: 0.18, y: 0.12, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

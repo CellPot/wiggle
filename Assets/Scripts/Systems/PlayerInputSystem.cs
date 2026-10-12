@@ -16,9 +16,14 @@ namespace Systems
 
             var mouseWorldPos = (float2)(Vector2)camera.ScreenToWorldPoint(Input.mousePosition);
 
-            foreach (var (worm, transform) in SystemAPI.Query<RefRW<WormMovementComponent>, RefRO<LocalTransform>>()
+            bool boostHeld = Input.GetMouseButton(0) || Input.GetKey(KeyCode.Space);
+
+            foreach (var (worm, transform, boost) in SystemAPI
+                         .Query<RefRW<WormMovementComponent>, RefRO<LocalTransform>, RefRW<WormBoostComponent>>()
                          .WithAll<PlayerTagComponent>())
             {
+                boost.ValueRW.Requested = boostHeld;
+
                 var wormPos = new float2(transform.ValueRO.Position.x, transform.ValueRO.Position.y);
                 var vectorToMouse = mouseWorldPos - wormPos;
 

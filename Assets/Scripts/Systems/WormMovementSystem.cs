@@ -14,8 +14,10 @@ namespace Systems
         {
             var deltaTime = SystemAPI.Time.DeltaTime;
 
-            foreach (var (localTransform, worm) in
-                     SystemAPI.Query<RefRW<LocalTransform>, RefRW<WormMovementComponent>>())
+            var boostLookup = SystemAPI.GetComponentLookup<WormBoostComponent>(true);
+
+            foreach (var (localTransform, worm, entity) in
+                     SystemAPI.Query<RefRW<LocalTransform>, RefRW<WormMovementComponent>>().WithEntityAccess())
             {
                 var newAngle = GetNewAngle(worm, deltaTime);
 
@@ -24,8 +26,12 @@ namespace Systems
 
                 worm.ValueRW.Direction = newDirection;
 
+                float speed = worm.ValueRO.Speed;
+                if (boostLookup.TryGetComponent(entity, out var boost) && boost.Active)
+                    speed *= boost.SpeedMultiplier;
+
                 var newPos = localTransform.ValueRO.Position +
-                             new float3(newDirection, 0) * worm.ValueRO.Speed * deltaTime;
+                             new float3(newDirection, 0) * speed * deltaTime;
                 newPos.z = 0;
 
                 localTransform.ValueRW.Position = newPos;
