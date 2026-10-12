@@ -15,6 +15,13 @@ namespace Systems
     [UpdateAfter(typeof(FoodConsumptionSystem))]
     public partial struct WormDeathSystem : ISystem
     {
+        private struct Collider
+        {
+            public Entity Owner;
+            public float2 Position;
+            public float Radius;
+        }
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -31,6 +38,39 @@ namespace Systems
 
             var dead = new NativeHashSet<Entity>(8, Allocator.Temp);
 
+            // Spatial hash of everything a head can collide with: other worms' segments and heads.
+            // Each entry carries its owning worm so a head can ignore its own body.
+            // Cell size covers the largest possible touching distance, so 3x3 cells are enough.
+            float maxRadius = 0f;
+            foreach (var collision in SystemAPI.Query<RefRO<WormSegmentCollisionComponent>>())
+                maxRadius = math.max(maxRadius, collision.ValueRO.Radius);
+
+            float cellSize = math.max(2f * maxRadius, 0.5f);
+            var cells = new NativeParallelMultiHashMap<int, Collider>(1024, Allocator.Temp);
+
+            foreach (var (transform, collision, segment) in SystemAPI
+                         .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>,
+                             RefRO<WormSegmentComponent>>())
+            {
+                var owner = segment.ValueRO.WormOwner;
+                if (owner == Entity.Null || !wormLookup.HasComponent(owner))
+                    continue;
+
+                float2 pos = transform.ValueRO.Position.xy;
+                cells.Add((int)math.hash((int2)math.floor(pos / cellSize)),
+                    new Collider { Owner = owner, Position = pos, Radius = collision.ValueRO.Radius });
+            }
+
+            foreach (var (transform, collision, headEntity) in SystemAPI
+                         .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>>()
+                         .WithAll<WormComponent>()
+                         .WithEntityAccess())
+            {
+                float2 pos = transform.ValueRO.Position.xy;
+                cells.Add((int)math.hash((int2)math.floor(pos / cellSize)),
+                    new Collider { Owner = headEntity, Position = pos, Radius = collision.ValueRO.Radius });
+            }
+
             foreach (var (headTransform, headCollision, headEntity) in SystemAPI
                          .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>>()
                          .WithAll<WormComponent>()
@@ -38,42 +78,36 @@ namespace Systems
             {
                 float2 headPos = headTransform.ValueRO.Position.xy;
                 float headRadius = headCollision.ValueRO.Radius;
+                int2 headCell = (int2)math.floor(headPos / cellSize);
 
-                foreach (var (segTransform, segCollision, segment) in SystemAPI
-                             .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>,
-                                 RefRO<WormSegmentComponent>>())
+                bool hit = false;
+                for (int dx = -1; dx <= 1 && !hit; dx++)
                 {
-                    var owner = segment.ValueRO.WormOwner;
-                    if (owner == Entity.Null || owner == headEntity || !wormLookup.HasComponent(owner))
-                        continue;
-
-                    if (math.distance(headPos, segTransform.ValueRO.Position.xy) <=
-                        headRadius + segCollision.ValueRO.Radius)
+                    for (int dy = -1; dy <= 1 && !hit; dy++)
                     {
-                        dead.Add(headEntity);
-                        break;
+                        int key = (int)math.hash(headCell + new int2(dx, dy));
+                        if (!cells.TryGetFirstValue(key, out var other, out var it))
+                            continue;
+
+                        do
+                        {
+                            if (other.Owner == headEntity)
+                                continue;
+
+                            if (math.distance(headPos, other.Position) <= headRadius + other.Radius)
+                            {
+                                hit = true;
+                                break;
+                            }
+                        } while (cells.TryGetNextValue(out other, ref it));
                     }
                 }
 
-                if (dead.Contains(headEntity))
-                    continue;
-
-                foreach (var (otherTransform, otherCollision, otherEntity) in SystemAPI
-                             .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>>()
-                             .WithAll<WormComponent>()
-                             .WithEntityAccess())
-                {
-                    if (otherEntity == headEntity)
-                        continue;
-
-                    if (math.distance(headPos, otherTransform.ValueRO.Position.xy) <=
-                        headRadius + otherCollision.ValueRO.Radius)
-                    {
-                        dead.Add(headEntity);
-                        break;
-                    }
-                }
+                if (hit)
+                    dead.Add(headEntity);
             }
+
+            cells.Dispose();
 
             // Segments of dead worms: count them, and clean up segments whose worm is already gone
             var segmentCounts = new NativeHashMap<Entity, int>(8, Allocator.Temp);

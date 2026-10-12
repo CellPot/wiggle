@@ -12,25 +12,24 @@ namespace Systems
     public partial struct FoodGridSystem : ISystem
     {
         private Entity _gridEntity;
+        private NativeParallelMultiHashMap<int, FoodGridEntry> _cells;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            _cells = new NativeParallelMultiHashMap<int, FoodGridEntry>(1024, Allocator.Persistent);
             _gridEntity = state.EntityManager.CreateEntity();
-            state.EntityManager.AddComponentData(_gridEntity, new FoodGridComponent
-            {
-                Cells = new NativeParallelMultiHashMap<int, FoodGridEntry>(1024, Allocator.Persistent)
-            });
+            state.EntityManager.AddComponentData(_gridEntity, new FoodGridComponent { Cells = _cells });
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
+            if (_cells.IsCreated)
+                _cells.Dispose();
+
             if (state.EntityManager.Exists(_gridEntity))
-            {
-                state.EntityManager.GetComponentData<FoodGridComponent>(_gridEntity).Cells.Dispose();
                 state.EntityManager.DestroyEntity(_gridEntity);
-            }
         }
 
         [BurstCompile]

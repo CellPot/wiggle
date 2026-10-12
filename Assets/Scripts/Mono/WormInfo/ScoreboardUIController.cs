@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Components;
 using Mono.Menu;
 using Unity.Collections;
@@ -21,6 +20,16 @@ namespace Mono.WormInfo
         private Button playAgainButton;
         private bool canRespawn;
 
+        private const int MaxBotRows = 10;
+        private const float BotListInterval = 0.25f;
+
+        private EntityQuery playerQuery;
+        private EntityQuery deadQuery;
+        private EntityQuery botQuery;
+        private readonly List<Label> botLabels = new List<Label>();
+        private readonly List<(string name, int score)> botScores = new List<(string name, int score)>();
+        private float nextBotListUpdate;
+
         private EntityManager entityManager;
         private bool started;
         private bool paused;
@@ -34,6 +43,14 @@ namespace Mono.WormInfo
             botScoresContainer = root.Q<VisualElement>("bot-scores-list");
 
             entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+
+            playerQuery = entityManager.CreateEntityQuery(
+                ComponentType.ReadOnly<PlayerTagComponent>(),
+                ComponentType.ReadOnly<WormInfoComponent>());
+            deadQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PlayerDeadComponent>());
+            botQuery = entityManager.CreateEntityQuery(
+                ComponentType.ReadOnly<BotTagComponent>(),
+                ComponentType.ReadOnly<WormInfoComponent>());
 
             BuildStaminaBar(root);
             BuildScreens(root);
@@ -105,16 +122,12 @@ namespace Mono.WormInfo
 
         void RequestRespawn()
         {
-            var query = entityManager.CreateEntityQuery(ComponentType.ReadWrite<PlayerDeadComponent>());
-
-            if (query.TryGetSingletonEntity<PlayerDeadComponent>(out var marker))
+            if (deadQuery.TryGetSingletonEntity<PlayerDeadComponent>(out var marker))
             {
                 var dead = entityManager.GetComponentData<PlayerDeadComponent>(marker);
                 dead.RespawnRequested = true;
                 entityManager.SetComponentData(marker, dead);
             }
-
-            query.Dispose();
         }
 
         static void QuitGame()
@@ -153,13 +166,6 @@ namespace Mono.WormInfo
 
         void UpdateScoreboard()
         {
-            // Get player score
-            var playerQuery = entityManager.CreateEntityQuery(
-                ComponentType.ReadOnly<PlayerTagComponent>(),
-                ComponentType.ReadOnly<WormInfoComponent>()
-            );
-            var deadQuery = entityManager.CreateEntityQuery(ComponentType.ReadOnly<PlayerDeadComponent>());
-
             // The player entity is destroyed on death; the dead marker holds the final score
             bool isDead = deadQuery.TryGetSingleton<PlayerDeadComponent>(out var deadState);
             if (isDead)
@@ -190,42 +196,50 @@ namespace Mono.WormInfo
             gameOverScreen.SetVisible(isDead);
             HandleInput(isDead);
 
-            // Get bot scores
-            var botQuery = entityManager.CreateEntityQuery(
-                ComponentType.ReadOnly<BotTagComponent>(),
-                ComponentType.ReadOnly<WormInfoComponent>()
-            );
+            if (Time.unscaledTime >= nextBotListUpdate)
+            {
+                nextBotListUpdate = Time.unscaledTime + BotListInterval;
+                UpdateBotList();
+            }
+        }
+
+        void UpdateBotList()
+        {
+            botScores.Clear();
 
             if (!botQuery.IsEmpty)
             {
-                var entities = botQuery.ToEntityArray(Allocator.Temp);
                 var infos = botQuery.ToComponentDataArray<WormInfoComponent>(Allocator.Temp);
-
-                // Create list of bot scores
-                var botScores = new List<(string name, int score)>();
                 for (int i = 0; i < infos.Length; i++)
-                {
                     botScores.Add((infos[i].Name.ToString(), infos[i].CurrentScore));
-                }
-
-                // Sort by score descending and take top 10
-                var topBots = botScores.OrderByDescending(b => b.score).Take(10).ToList();
-
-                // Update UI
-                botScoresContainer.Clear();
-                for (int i = 0; i < topBots.Count; i++)
-                {
-                    var botLabel = new Label($"{i + 1}. {topBots[i].name}: {topBots[i].score}");
-                    botLabel.style.fontSize = 16;
-                    botLabel.style.color = new Color(0.9f, 0.9f, 0.9f);
-                    botLabel.style.marginBottom = 3;
-                    botScoresContainer.Add(botLabel);
-                }
-
-                entities.Dispose();
                 infos.Dispose();
+
+                botScores.Sort((a, b) => b.score.CompareTo(a.score));
             }
 
+            int rows = Mathf.Min(botScores.Count, MaxBotRows);
+
+            while (botLabels.Count < rows)
+            {
+                var botLabel = new Label();
+                botLabel.style.fontSize = 16;
+                botLabel.style.color = new Color(0.9f, 0.9f, 0.9f);
+                botLabel.style.marginBottom = 3;
+                botLabels.Add(botLabel);
+                botScoresContainer.Add(botLabel);
+            }
+
+            for (int i = 0; i < botLabels.Count; i++)
+            {
+                bool used = i < rows;
+                botLabels[i].style.display = used ? DisplayStyle.Flex : DisplayStyle.None;
+                if (used)
+                    botLabels[i].text = $"{i + 1}. {botScores[i].name}: {botScores[i].score}";
+            }
+        }
+
+        void OnDestroy()
+        {
             playerQuery.Dispose();
             deadQuery.Dispose();
             botQuery.Dispose();
