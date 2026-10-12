@@ -11,7 +11,7 @@ namespace Systems
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct PlayerSpawnSystem : ISystem
     {
-        public const float MinGameOverTime = 1f;
+        public const float MinGameOverTime = 3f;
         private const int MaxSpawnAttempts = 10;
 
         public void OnCreate(ref SystemState state)
@@ -36,7 +36,7 @@ namespace Systems
                 if (!deadState.ValueRO.RespawnRequested)
                     return;
 
-                // Requests during the grace period are dropped
+                // Requests during the cooldown are dropped; the UI disables the button meanwhile
                 if (deadState.ValueRO.TimeSinceDeath < MinGameOverTime)
                 {
                     deadState.ValueRW.RespawnRequested = false;

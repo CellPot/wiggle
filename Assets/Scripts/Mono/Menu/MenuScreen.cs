@@ -20,7 +20,6 @@ namespace Mono.Menu
             Root.style.bottom = 0;
             Root.style.alignItems = Align.Center;
             Root.style.justifyContent = Justify.Center;
-            Root.style.backgroundColor = new Color(0f, 0f, 0f, 0.6f);
             Root.style.display = DisplayStyle.None;
 
             var titleLabel = new Label(title);
@@ -39,7 +38,7 @@ namespace Mono.Menu
             parent.Add(Root);
         }
 
-        public void AddButton(string text, Action onClick)
+        public Button AddButton(string text, Action onClick)
         {
             var button = new Button(onClick) { text = text };
             button.style.width = 220;
@@ -47,6 +46,7 @@ namespace Mono.Menu
             button.style.fontSize = 22;
             button.style.marginTop = 8;
             Root.Add(button);
+            return button;
         }
 
         public void SetVisible(bool visible)

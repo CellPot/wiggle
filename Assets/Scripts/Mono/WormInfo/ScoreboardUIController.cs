@@ -18,6 +18,8 @@ namespace Mono.WormInfo
         private MenuScreen startScreen;
         private MenuScreen pauseScreen;
         private MenuScreen gameOverScreen;
+        private Button playAgainButton;
+        private bool canRespawn;
 
         private EntityManager entityManager;
         private bool started;
@@ -76,7 +78,7 @@ namespace Mono.WormInfo
             pauseScreen.AddButton("Quit", QuitGame);
 
             gameOverScreen = new MenuScreen(root, "Game Over");
-            gameOverScreen.AddButton("Play Again", RequestRespawn);
+            playAgainButton = gameOverScreen.AddButton("Play Again", RequestRespawn);
             gameOverScreen.AddButton("Quit", QuitGame);
         }
 
@@ -135,7 +137,7 @@ namespace Mono.WormInfo
 
             if (isDead)
             {
-                if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
+                if (canRespawn && (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return)))
                     RequestRespawn();
                 return;
             }
@@ -163,6 +165,11 @@ namespace Mono.WormInfo
             if (isDead)
             {
                 gameOverScreen.Detail.text = $"Final score: {deadState.FinalScore}";
+
+                float remaining = Systems.PlayerSpawnSystem.MinGameOverTime - deadState.TimeSinceDeath;
+                canRespawn = remaining <= 0f;
+                playAgainButton.SetEnabled(canRespawn);
+                playAgainButton.text = canRespawn ? "Play Again" : $"Play Again ({Mathf.CeilToInt(remaining)})";
             }
             else if (!playerQuery.IsEmpty)
             {
