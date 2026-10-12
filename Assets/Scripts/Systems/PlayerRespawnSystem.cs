@@ -3,12 +3,11 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 
 namespace Systems
 {
-    // While the player is dead (disabled, see WormDeathSystem), waits for a click or Space
-    // after a short delay and resets the same entity as a fresh worm.
+    // While the player is dead (disabled, see WormDeathSystem), waits for the game-over UI to
+    // request a respawn (after a short delay) and resets the same entity as a fresh worm.
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(WormDeathSystem))]
     public partial struct PlayerRespawnSystem : ISystem
@@ -22,7 +21,6 @@ namespace Systems
                 ? botSpawner.SpawnRadius
                 : DefaultSpawnRadius;
 
-            bool restartPressed = Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space);
             float deltaTime = SystemAPI.Time.DeltaTime;
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -36,8 +34,15 @@ namespace Systems
             {
                 dead.ValueRW.TimeSinceDeath += deltaTime;
 
-                if (!restartPressed || dead.ValueRO.TimeSinceDeath < MinGameOverTime)
+                if (!dead.ValueRO.RespawnRequested)
                     continue;
+
+                // Requests during the grace period are dropped
+                if (dead.ValueRO.TimeSinceDeath < MinGameOverTime)
+                {
+                    dead.ValueRW.RespawnRequested = false;
+                    continue;
+                }
 
                 var random = Unity.Mathematics.Random.CreateFromIndex((uint)(SystemAPI.Time.ElapsedTime * 1000));
                 float angle = random.NextFloat(0f, math.PI * 2f);

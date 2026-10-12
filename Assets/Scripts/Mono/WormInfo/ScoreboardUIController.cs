@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Components;
+using Mono.Menu;
 using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
@@ -13,10 +14,13 @@ namespace Mono.WormInfo
         private UIDocument uiDocument;
         private Label playerScoreLabel;
         private VisualElement botScoresContainer;
-        private VisualElement gameOverOverlay;
-        private Label gameOverScoreLabel;
+        private MenuScreen startScreen;
+        private MenuScreen pauseScreen;
+        private MenuScreen gameOverScreen;
 
         private EntityManager entityManager;
+        private bool started;
+        private bool paused;
 
         void Start()
         {
@@ -28,42 +32,94 @@ namespace Mono.WormInfo
 
             entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
-            BuildGameOverOverlay(root);
+            BuildScreens(root);
+
+            // The game waits on the start screen until Play is pressed
+            SetSimulationEnabled(false);
+            startScreen.SetVisible(true);
         }
 
-        void BuildGameOverOverlay(VisualElement root)
+        void BuildScreens(VisualElement root)
         {
-            gameOverOverlay = new VisualElement();
-            gameOverOverlay.pickingMode = PickingMode.Ignore;
-            gameOverOverlay.style.position = Position.Absolute;
-            gameOverOverlay.style.left = 0;
-            gameOverOverlay.style.right = 0;
-            gameOverOverlay.style.top = 0;
-            gameOverOverlay.style.bottom = 0;
-            gameOverOverlay.style.alignItems = Align.Center;
-            gameOverOverlay.style.justifyContent = Justify.Center;
-            gameOverOverlay.style.backgroundColor = new Color(0f, 0f, 0f, 0.5f);
-            gameOverOverlay.style.display = DisplayStyle.None;
+            startScreen = new MenuScreen(root, "Wiggle", "Eat, grow, don't hit other worms");
+            startScreen.AddButton("Play", StartGame);
+            startScreen.AddButton("Quit", QuitGame);
 
-            var title = new Label("Game Over");
-            title.style.fontSize = 48;
-            title.style.color = Color.white;
-            title.style.unityFontStyleAndWeight = FontStyle.Bold;
+            pauseScreen = new MenuScreen(root, "Paused");
+            pauseScreen.AddButton("Resume", () => SetPaused(false));
+            pauseScreen.AddButton("Quit", QuitGame);
 
-            gameOverScoreLabel = new Label();
-            gameOverScoreLabel.style.fontSize = 24;
-            gameOverScoreLabel.style.color = Color.white;
-            gameOverScoreLabel.style.marginTop = 10;
+            gameOverScreen = new MenuScreen(root, "Game Over");
+            gameOverScreen.AddButton("Play Again", RequestRespawn);
+            gameOverScreen.AddButton("Quit", QuitGame);
+        }
 
-            var hint = new Label("Click or press Space to respawn");
-            hint.style.fontSize = 18;
-            hint.style.color = new Color(0.8f, 0.8f, 0.8f);
-            hint.style.marginTop = 20;
+        void StartGame()
+        {
+            started = true;
+            startScreen.SetVisible(false);
+            SetSimulationEnabled(true);
+        }
 
-            gameOverOverlay.Add(title);
-            gameOverOverlay.Add(gameOverScoreLabel);
-            gameOverOverlay.Add(hint);
-            root.Add(gameOverOverlay);
+        void SetPaused(bool value)
+        {
+            paused = value;
+            pauseScreen.SetVisible(value);
+            SetSimulationEnabled(!value);
+        }
+
+        void SetSimulationEnabled(bool enabled)
+        {
+            var group = World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<SimulationSystemGroup>();
+            if (group != null)
+                group.Enabled = enabled;
+        }
+
+        void RequestRespawn()
+        {
+            var query = entityManager.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadWrite<PlayerDeadComponent>() },
+                Options = EntityQueryOptions.IncludeDisabledEntities
+            });
+
+            if (query.TryGetSingletonEntity<PlayerDeadComponent>(out var player))
+            {
+                var dead = entityManager.GetComponentData<PlayerDeadComponent>(player);
+                dead.RespawnRequested = true;
+                entityManager.SetComponentData(player, dead);
+            }
+
+            query.Dispose();
+        }
+
+        static void QuitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        void HandleInput(bool isDead)
+        {
+            if (!started)
+            {
+                if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
+                    StartGame();
+                return;
+            }
+
+            if (isDead)
+            {
+                if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
+                    RequestRespawn();
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Escape))
+                SetPaused(!paused);
         }
 
         void Update()
@@ -85,17 +141,20 @@ namespace Mono.WormInfo
                 Options = EntityQueryOptions.IncludeDisabledEntities
             });
 
+            bool isDead = false;
             if (!playerQuery.IsEmpty)
             {
                 var playerEntity = playerQuery.GetSingletonEntity();
                 var playerInfo = entityManager.GetComponentData<WormInfoComponent>(playerEntity);
                 playerScoreLabel.text = $"{playerInfo.Name}: {playerInfo.CurrentScore}";
 
-                bool isDead = entityManager.HasComponent<PlayerDeadComponent>(playerEntity);
-                gameOverOverlay.style.display = isDead ? DisplayStyle.Flex : DisplayStyle.None;
+                isDead = entityManager.HasComponent<PlayerDeadComponent>(playerEntity);
                 if (isDead)
-                    gameOverScoreLabel.text = $"Final score: {playerInfo.CurrentScore}";
+                    gameOverScreen.Detail.text = $"Final score: {playerInfo.CurrentScore}";
             }
+
+            gameOverScreen.SetVisible(isDead);
+            HandleInput(isDead);
 
             // Get bot scores
             var botQuery = entityManager.CreateEntityQuery(

@@ -6,5 +6,7 @@ namespace Components
     public struct PlayerDeadComponent : IComponentData
     {
         public float TimeSinceDeath;
+        // Set by the game-over UI; PlayerRespawnSystem resets the worm once it is allowed to.
+        public bool RespawnRequested;
     }
 }
