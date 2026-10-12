@@ -11,8 +11,15 @@ namespace Systems
     public partial struct BotAISystem : ISystem
     {
         [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<FoodGridComponent>();
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var grid = SystemAPI.GetSingleton<FoodGridComponent>();
             var currentTime = (float)SystemAPI.Time.ElapsedTime;
 
             foreach (var (bot, movement, transform, entity) in SystemAPI
@@ -30,29 +37,35 @@ namespace Systems
                     continue;
                 }
 
-                // PRIORITY 2: Look for food
-                Entity closestFood = Entity.Null;
+                // PRIORITY 2: Look for food (only nearby grid cells)
+                bool foundFood = false;
+                float2 foodPos = float2.zero;
                 float closestDistance = float.MaxValue;
+                float detectionRadius = bot.ValueRO.FoodDetectionRadius;
 
-                foreach (var (foodTransform, food, foodEntity) in SystemAPI
-                             .Query<RefRO<LocalTransform>, RefRO<FoodComponent>>()
-                             .WithEntityAccess())
+                FoodGridComponent.CellRange(botPos, detectionRadius, out var minCell, out var maxCell);
+                for (int cy = minCell.y; cy <= maxCell.y; cy++)
+                for (int cx = minCell.x; cx <= maxCell.x; cx++)
                 {
-                    float2 foodPos = foodTransform.ValueRO.Position.xy;
-                    float distance = math.distance(botPos, foodPos);
+                    if (!grid.Cells.TryGetFirstValue(FoodGridComponent.Key(new int2(cx, cy)),
+                            out var food, out var it))
+                        continue;
 
-                    if (distance < bot.ValueRO.FoodDetectionRadius && distance < closestDistance)
+                    do
                     {
-                        closestDistance = distance;
-                        closestFood = foodEntity;
-                    }
+                        float distance = math.distance(botPos, food.Position);
+                        if (distance < detectionRadius && distance < closestDistance)
+                        {
+                            closestDistance = distance;
+                            foodPos = food.Position;
+                            foundFood = true;
+                        }
+                    } while (grid.Cells.TryGetNextValue(out food, ref it));
                 }
 
-                if (closestFood != Entity.Null)
+                if (foundFood)
                 {
                     // Found food - but check if chasing it would take us too far
-                    var foodTransform = SystemAPI.GetComponent<LocalTransform>(closestFood);
-                    float2 foodPos = foodTransform.Position.xy;
                     float foodDistanceFromCenter = math.length(foodPos);
 
                     // Only chase food if it's not taking us further from center when we're already far
