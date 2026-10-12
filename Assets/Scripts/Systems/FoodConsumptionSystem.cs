@@ -12,9 +12,19 @@ namespace Systems
     public partial struct FoodConsumptionSystem : ISystem
     {
         [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var ecb = new EntityCommandBuffer(Allocator.TempJob);
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
+
+            // Food already eaten this frame; destruction is deferred, so track it here
+            var eaten = new NativeHashSet<Entity>(16, Allocator.Temp);
 
             foreach (var (wormTransform, wormCollision, worm, wormEntity) in SystemAPI
                          .Query<RefRO<LocalTransform>, RefRO<WormSegmentCollisionComponent>,
@@ -23,77 +33,63 @@ namespace Systems
             {
                 float2 wormPos = wormTransform.ValueRO.Position.xy;
 
-                // Track segments spawned THIS frame for this worm
-                int segmentsSpawnedThisFrame = 0;
-
                 foreach (var (foodTransform, foodComponent, foodEntity) in SystemAPI
                              .Query<RefRO<LocalTransform>, RefRO<FoodComponent>>().WithEntityAccess())
                 {
+                    if (eaten.Contains(foodEntity))
+                        continue;
+
                     float2 foodPos = foodTransform.ValueRO.Position.xy;
-                    float distance = math.distance(wormPos, foodPos);
                     float combinedRadius = wormCollision.ValueRO.Radius + foodComponent.ValueRO.CollisionRadius;
 
-                    if (distance <= combinedRadius)
+                    if (math.distance(wormPos, foodPos) > combinedRadius)
+                        continue;
+
+                    eaten.Add(foodEntity);
+                    ecb.DestroyEntity(foodEntity);
+
+                    int foodValue = foodComponent.ValueRO.Value;
+                    worm.ValueRW.Score += foodValue;
+
+                    float growthAmount = foodValue * worm.ValueRO.ScalePerScore;
+                    worm.ValueRW.TargetScale = math.min(
+                        worm.ValueRO.TargetScale + growthAmount,
+                        worm.ValueRO.MaxScale
+                    );
+
+                    int scoreGained = worm.ValueRO.Score - worm.ValueRO.LastSegmentScore;
+                    if (scoreGained < worm.ValueRO.ScorePerSegment)
+                        continue;
+
+                    int segmentsToAdd = scoreGained / worm.ValueRO.ScorePerSegment;
+                    worm.ValueRW.LastSegmentScore += segmentsToAdd * worm.ValueRO.ScorePerSegment;
+
+                    for (int i = 0; i < segmentsToAdd; i++)
                     {
-                        ecb.DestroyEntity(foodEntity);
+                        var newSegment = ecb.Instantiate(worm.ValueRO.SegmentPrefab);
+                        int newSegmentIndex = worm.ValueRO.SegmentCount + i;
 
-                        int foodValue = foodComponent.ValueRO.Value;
-                        worm.ValueRW.Score += foodValue;
-
-                        float growthAmount = foodValue * worm.ValueRO.ScalePerScore;
-                        float newTargetScale = math.min(
-                            worm.ValueRO.TargetScale + growthAmount,
-                            worm.ValueRO.MaxScale
-                        );
-                        worm.ValueRW.TargetScale = newTargetScale;
-
-                        int scoreGained = worm.ValueRO.Score - worm.ValueRO.LastSegmentScore;
-                        if (scoreGained >= worm.ValueRO.ScorePerSegment)
+                        ecb.SetComponent(newSegment, new WormSegmentComponent
                         {
-                            int segmentsToAdd = scoreGained / worm.ValueRO.ScorePerSegment;
-                            worm.ValueRW.LastSegmentScore += segmentsToAdd * worm.ValueRO.ScorePerSegment;
+                            WormOwner = wormEntity,
+                            SegmentIndex = newSegmentIndex
+                        });
 
-                            // Count existing segments
-                            int segmentCount = 0;
-                            foreach (var segment in SystemAPI.Query<RefRO<WormSegmentComponent>>())
-                            {
-                                if (segment.ValueRO.WormOwner == wormEntity)
-                                    segmentCount++;
-                            }
+                        float3 spawnPos = wormTransform.ValueRO.Position;
+                        spawnPos.z = (newSegmentIndex + 1) * 0.01f;
 
-                            // Spawn segments, accounting for ones already queued this frame
-                            for (int i = 0; i < segmentsToAdd; i++)
-                            {
-                                var newSegment = ecb.Instantiate(worm.ValueRO.SegmentPrefab);
-
-                                // Use segmentCount + segments already spawned this frame + current index
-                                int newSegmentIndex = segmentCount + segmentsSpawnedThisFrame + i;
-
-                                ecb.SetComponent(newSegment, new WormSegmentComponent
-                                {
-                                    WormOwner = wormEntity,
-                                    SegmentIndex = newSegmentIndex
-                                });
-
-                                float3 spawnPos = wormTransform.ValueRO.Position;
-                                spawnPos.z = (newSegmentIndex + 1) * 0.01f;
-
-                                ecb.SetComponent(newSegment, LocalTransform.FromPositionRotationScale(
-                                    spawnPos,
-                                    quaternion.identity,
-                                    worm.ValueRO.CurrentScale
-                                ));
-                            }
-
-                            // Update the counter for this frame
-                            segmentsSpawnedThisFrame += segmentsToAdd;
-                        }
+                        ecb.SetComponent(newSegment, LocalTransform.FromPositionRotationScale(
+                            spawnPos,
+                            quaternion.identity,
+                            worm.ValueRO.CurrentScale
+                        ));
                     }
+
+                    worm.ValueRW.SegmentCount += segmentsToAdd;
                 }
             }
 
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
+            eaten.Dispose();
         }
     }
 }

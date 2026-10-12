@@ -16,7 +16,7 @@ namespace Systems
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (transform, worm, wormEntity) in SystemAPI
-                         .Query<RefRO<LocalTransform>, RefRO<WormComponent>>()
+                         .Query<RefRO<LocalTransform>, RefRW<WormComponent>>()
                          .WithAll<WormNeedsInitializationTag>()
                          .WithEntityAccess())
             {
@@ -42,6 +42,8 @@ namespace Systems
                         worm.ValueRO.CurrentScale
                     ));
                 }
+
+                worm.ValueRW.SegmentCount = worm.ValueRO.InitialSegmentCount;
 
                 // Remove the initialization tag so this only runs once
                 ecb.RemoveComponent<WormNeedsInitializationTag>(wormEntity);

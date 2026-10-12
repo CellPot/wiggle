@@ -19,5 +19,6 @@ namespace Components
         public int LastSegmentScore;
 
         public int InitialSegmentCount;
+        public int SegmentCount;
     }
 }
